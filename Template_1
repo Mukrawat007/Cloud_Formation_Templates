@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Basic EC2 Instance and other features
+
+Parameters:
+    MyKeyName:
+        Description: Select the KeyName
+        Type: AWS::EC2::KeyPair::KeyName
+
+    InstanceTypes:
+        Description: Select the instancetype
+        Type: String
+        Default: dev
+        AllowedValues:
+            - dev
+            - test
+            - QA
+    AvailabilityZones:
+        Description: Select the AvailabilityZone
+        Type: String
+        Default: us-east-2a 
+        AllowedValues:
+            - us-east-2a
+            - us-east-2b
+            - us-east-2c
+            - us-west-2a
+            - us-west-2b
+            - us-west-2c
+            - us-east-1a
+            - us-east-1b
+            - us-east-1c
+Mappings:
+    RegionMap:
+        us-east-2:
+            amiid: ami-0d5d9d301c853a04a 
+        us-east-1:
+            amiid: ami-00068cd7555f543d5
+        us-west-2:
+            amiid: ami-06d51e91cea0dac8d
+
+    EnvironmentMap:
+        dev:
+            instancetype: t2.small
+        test:
+            instancetype: t2.micro
+        QA:
+            instancetype: t2.medium
+Conditions:
+    Condition_EIP: !Equals [!Ref InstanceTypes, dev]
+    Condition_dev_sec_grp: !Not [{Condition: Condition_test_sec_grp}]
+    Condition_test_sec_grp: !Equals [!Ref InstanceTypes, test]
+    Key_condition: !And [!Equals [!Ref "AWS::Region", us-east-1], !Equals [!Ref "AWS::Region", us-east-2]]
+    
+
+Resources:
+    MyTestEC2Instance:
+        Type: AWS::EC2::Instance
+        Properties:
+            ImageId: !FindInMap
+                - RegionMap
+                - !Ref "AWS::Region"
+                - amiid
+            InstanceType: !FindInMap
+                - EnvironmentMap
+                - !Ref InstanceTypes
+                - instancetype
+            KeyName: !If [Key_condition, Ansible-key, test-key]
+            AvailabilityZone: !Ref AvailabilityZones
+            SecurityGroups: !If [Condition_dev_sec_grp, [!Ref SecurityGroupForDev], [!Ref SecurityGroupFortest]]
+
+    MyProdEIP:
+        Type: AWS::EC2::EIP
+        Condition: Condition_EIP
+        Properties:
+            InstanceId: !Ref MyTestEC2Instance
+    SecurityGroupForDev: 
+        Type: AWS::EC2::SecurityGroup
+        Condition: Condition_dev_sec_grp
+        Properties:
+            GroupDescription: Security group for dev env
+            SecurityGroupIngress:
+                - IpProtocol: tcp
+                  FromPort: '22'
+                  ToPort: '22'
+                  CidrIp: 0.0.0.0/0
+    SecurityGroupFortest:
+        Type: AWS::EC2::SecurityGroup
+        Condition: Condition_test_sec_grp
+        Properties:
+            GroupDescription: Security group for test env
+            SecurityGroupIngress:
+                - IpProtocol: tcp
+                  FromPort: '80'
+                  ToPort: '80'
+                  CidrIp: 0.0.0.0/0
