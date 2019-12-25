@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Basic EC2 Instance template and other features
+
+
+Resources:
+    MyTestEC2Instance:
+        Type: AWS::EC2::Instance
+        Properties:
+            ImageId: ami-0dacb0c129b49f529
+            InstanceType: t2.micro
+            KeyName: Ansible-key
+            SecurityGroups: 
+                - default
+            AvailabilityZone: us-east-2c
+            UserData:
+                Fn::Base64: |
+                    #!/bin/bash
+                    sudo yum update -y
+                    sudo yum install java-1.8.0-openjdk* -y
+                    sudo yum install tomcat -y
+                    systemctl start tomcat && systemctl enable tomcat
+                    mkdir /usr/share/tomcat/webapps/root
+                    touch /usr/share/tomcat/webapps/root/index.html
+                    echo "<h1><center>Cloud Formation Template</center></h1>" > /usr/share/tomcat/webapps/root/index.html
