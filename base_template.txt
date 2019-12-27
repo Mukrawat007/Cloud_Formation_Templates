@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Basic EC2 Instance template and other features
+
+
+Resources:
+    MyTestEC2Instance:
+        Type: AWS::EC2::Instance
+        Properties:
+            ImageId: ami-0dacb0c129b49f529
+            InstanceType: t2.micro
+            KeyName: Ansible-key
+            SecurityGroups:
+                - default
+            AvailabilityZone: us-east-2c
