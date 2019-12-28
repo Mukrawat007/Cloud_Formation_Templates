@@ -54,33 +54,38 @@ Resources:
                             command: "mv apache-tomcat-8.5.50 tomcat"
                             cwd: "/opt"
                             ignoreErrors: "false"
-
+                            
                         test2:
+                            command: "chown -R ec2-user:ec2-user /opt/tomcat"
+                            cwd: "/opt/tomcat"
+                            ignoreErrors: "false"
+
+                        test3:
                             command: 'sed -i "44i   <role rolename=\"manager-gui\"/>\n<user username=\"tomcat\" password=\"tomcat\" roles=\"manager-gui\"/>" /opt/tomcat/conf/tomcat-users.xml'
                             cwd: "/opt/tomcat/conf/"
                             ignoreErrors: "false"
                             
-                        test3:
+                        test4:
                             command: 'sed -i "19i \<\!--" /opt/tomcat/webapps/host-manager/META-INF/context.xml'
                             cwd: "/opt/tomcat/webapps/host-manager/META-INF/"
                             ignoreErrors: "false"
 
-                        test4:
+                        test5:
                             command: 'sed -i "22i -->" /opt/tomcat/webapps/host-manager/META-INF/context.xml'
                             cwd: "/opt/tomcat/webapps/host-manager/META-INF/"
                             ignoreErrors: "false"
 
-                        test4:
+                        test6:
                             command: 'sed -i "19i \<\!--" /opt/tomcat/webapps/manager/META-INF/context.xml'
                             cwd: "/opt/tomcat/webapps/manager/META-INF/"
                             ignoreErrors: "false"
 
-                        test6:
+                        test7:
                             command: 'sed -i "22i -->" /opt/tomcat/webapps/manager/META-INF/context.xml'
                             cwd: "/opt/tomcat/webapps/manager/META-INF/"
                             ignoreErrors: "false"
 
-                        test7: 
+                        test8: 
                             command: "./startup.sh"
                             cwd: "/opt/tomcat/bin/"
                             ignoreErrors: "false"
