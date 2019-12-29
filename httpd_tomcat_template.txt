@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template to check cfn-init.
+
+Parameters:
+    MyKeyName: 
+        Type: AWS::EC2::KeyPair::KeyName
+
+Resources:
+    MySecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            GroupDescription: MySG with port 22 and 8080 inbound.
+            SecurityGroupIngress:
+                - IpProtocol: tcp
+                  FromPort: '22'
+                  ToPort: '22'
+                  CidrIp: 0.0.0.0/0
+                - IpProtocol: tcp
+                  FromPort: '8080'
+                  ToPort: '8080'
+                  CidrIp: 0.0.0.0/0
+                - IpProtocol: tcp
+                  FromPort: '80'
+                  ToPort: '80'
+                  CidrIp: 0.0.0.0/0
+
+    MyEC2Instance:
+        Type: AWS::EC2::Instance
+        Metadata:
+            AWS::CloudFormation::Init:
+                config: 
+                    packages: 
+                        yum:
+                            java-1.8.0-openjdk: []
+                            httpd: []
+                    groups:
+                        GroupOne: {}
+                        GroupTwo:
+                            gid: "55"
+
+                    files:
+                        /tmp/test.txt:
+                            content: "My name is Mukesh.\n"
+                            mode: "000644"
+                    users:
+                        Mukesh: 
+                            groups:
+                                - "GroupOne"
+                                - "GroupTwo"
+                            uid: "50"
+                            
+                    sources:
+                        /opt: "http://mirrors.estointernet.in/apache/tomcat/tomcat-8/v8.5.50/bin/apache-tomcat-8.5.50.tar.gz"
+
+                    commands:
+
+                        test1:
+                            command: "mv apache-tomcat-8.5.50 tomcat"
+                            cwd: "/opt"
+                            ignoreErrors: "false"
+                            
+                        test2:
+                            command: "chown -R ec2-user:ec2-user /opt/tomcat"
+                            cwd: "/opt/tomcat"
+                            ignoreErrors: "false"
+
+                        test3:
+                            command: 'sed -i "44i   <role rolename=\"manager-gui\"/>\n<user username=\"tomcat\" password=\"tomcat\" roles=\"manager-gui\"/>" /opt/tomcat/conf/tomcat-users.xml'
+                            cwd: "/opt/tomcat/conf/"
+                            ignoreErrors: "false"
+                            
+                        test4:
+                            command: 'sed -i "19i \<\!--" /opt/tomcat/webapps/host-manager/META-INF/context.xml'
+                            cwd: "/opt/tomcat/webapps/host-manager/META-INF/"
+                            ignoreErrors: "false"
+
+                        test5:
+                            command: 'sed -i "22i -->" /opt/tomcat/webapps/host-manager/META-INF/context.xml'
+                            cwd: "/opt/tomcat/webapps/host-manager/META-INF/"
+                            ignoreErrors: "false"
+
+                        test6:
+                            command: 'sed -i "19i \<\!--" /opt/tomcat/webapps/manager/META-INF/context.xml'
+                            cwd: "/opt/tomcat/webapps/manager/META-INF/"
+                            ignoreErrors: "false"
+
+                        test7:
+                            command: 'sed -i "22i -->" /opt/tomcat/webapps/manager/META-INF/context.xml'
+                            cwd: "/opt/tomcat/webapps/manager/META-INF/"
+                            ignoreErrors: "false"
+
+                        test8: 
+                            command: "./startup.sh"
+                            cwd: "/opt/tomcat/bin/"
+                            ignoreErrors: "false"
+
+                        test9:
+                            command: "echo '<h1><center>This is apache page.</center></h1>' > /var/www/html/index.html"
+                            cwd: "/var/www/html"
+                            ignoreErrors: "false"
+
+                    services: 
+                        sysvinit: 
+                            httpd: 
+                                enabled: "true"
+                                ensureRunning: "true"
+                                files: 
+                                    - "/etc/httpd/conf/httpd.conf"
+                                sources: 
+                                    - "/var/www/html/"
+
+        Properties:
+            ImageId: ami-0dacb0c129b49f529
+            InstanceType: t2.micro
+            KeyName: !Ref MyKeyName
+            SecurityGroups:
+                - !Ref MySecurityGroup
+            AvailabilityZone: us-east-2c
+            UserData:
+                Fn::Base64:
+                    !Sub |
+                        #!/bin/bash
+                        sudo yum update -y
+                        yum update -y aws-cfn-bootstarp
+                        /opt/aws/bin/cfn-init -s ${AWS::StackName} -r MyEC2Instance  --region ${AWS::Region}
+                        #/opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName}     --resource MyEC2Instance  --region ${AWS::Region}
+                        #sudo yum install java-1.8.0-openjdk -y
+                        #sudo yum install tomcat -y
+                        #systemctl start tomcat && systemctl enable tomcat
+                        #mkdir /usr/share/tomcat/webapps/root
+                        #touch /usr/share/tomcat/webapps/root/index.html
+                        #echo "<h1><center>Cloud Formation Template</center></h1>" > /usr/share/tomcat/webapps/root/index.html
