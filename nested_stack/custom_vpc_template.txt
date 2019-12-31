@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template to create a VPC
+
+Parameters:
+    VPCCidr: 
+        Type: String
+        Default: 10.0.0.0/16
+        Description: VPC cidr block.
+
+    SubnetCidr:
+        Type: String
+        Default: 10.0.1.0/24
+        Description: Subnet cidr block inside the VPC.
+
+Metadata:
+    AWS::CloudFormation::Interface:
+        ParameterGroups:
+          - Label:
+                default: CIDR range for both the VPC and subnet.
+            Parameters:
+                - VPCCidr
+                - SubnetCidr
+                
+Resources:
+    MyVPC:
+        Type: AWS::EC2::VPC
+        Properties:
+            CidrBlock: !Ref VPCCidr
+            EnableDnsHostnames: true
+            EnableDnsSupport: true
+            InstanceTenancy: default
+            Tags: 
+                - Key: Name
+                  Value: !Sub "${AWS::StackName}-MyVPC"
+    CustomSubnet01:
+        Type: AWS::EC2::Subnet
+        Properties:
+            AvailabilityZone: 
+                Fn::Select:
+                    - '0'
+                    - Fn::GetAZs:
+                        Ref: AWS::Region
+            CidrBlock: !Ref SubnetCidr 
+            VpcId: !Ref MyVPC
+            Tags:
+                - Key: Name
+                  Value: !Sub "${AWS::StackName}-CustomSubnet01"
+
+    CustomRouteTable:
+        Type: AWS::EC2::RouteTable
+        Properties:
+            Tags:
+                - Key: Name 
+                  Value: !Sub "${AWS::StackName}-CustomRouteTable"
+                - Key: Network
+                  Value: "Public"
+            VpcId: !Ref MyVPC
+
+    SubnetRouteTableAssociation: 
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref CustomRouteTable
+            SubnetId: !Ref CustomSubnet01
+
+    CustomIGW:
+        Type: AWS::EC2::InternetGateway
+        Properties:
+            Tags:
+                - Key: Name
+                  Value: !Sub "${AWS::StackName}-IGW"
+
+    VPCGatewayAttachment:
+        Type: AWS::EC2::VPCGatewayAttachment
+        Properties:
+            InternetGatewayId: !Ref CustomIGW
+            VpcId: !Ref  MyVPC
+
+    Route:
+        Type: AWS::EC2::Route
+        Properties:
+            DestinationCidrBlock: 0.0.0.0/0 
+            GatewayId: !Ref CustomIGW
+            RouteTableId: !Ref CustomRouteTable
+
+Outputs:
+    OutputSubnet:
+        Description: Subnet id 
+        Value: !Ref CustomSubnet01
+    OutputVPC: 
+        Description: VPC id 
+        Value: !Ref MyVPC

@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This is the root template for template_5.
+
+Parameters:
+    MyKeyName:
+        Type: AWS::EC2::KeyPair::KeyName
+
+    VPCCidr: 
+        Type: String
+        Default: 10.0.0.0/16
+        Description: VPC cidr block.
+
+    SubnetCidr:
+        Type: String
+        Default: 10.0.1.0/24
+        Description: Subnet cidr block inside the VPC.
+
+Resources:
+
+    MyCustomVPC:
+        Type: AWS::CloudFormation::Stack
+        Properties: 
+            TemplateURL: https://vpc-nested.s3.us-east-2.amazonaws.com/Template_5.txt
+            Parameters: 
+                VPCCidr: !Ref VPCCidr
+                SubnetCidr: !Ref SubnetCidr
+            TimeoutInMinutes: 5
+
+
+    MyCustomSecGrp:
+        Type: AWS::CloudFormation::Stack
+        Properties: 
+            TemplateURL: https://vpc-nested.s3.us-east-2.amazonaws.com/Sec_Grp_Template.txt
+            Parameters: 
+                VPCId: !GetAtt MyCustomVPC.Outputs.OutputVPC
+            TimeoutInMinutes: 5
+
+
+    MyInstance:
+        Type: AWS::EC2::Instance
+        Properties:
+            ImageId: ami-0dacb0c129b49f529
+            InstanceType: t2.micro
+            KeyName: !Ref MyKeyName
+            NetworkInterfaces:
+                - AssociatePublicIpAddress: "true"
+                  DeviceIndex: 0
+                  SubnetId: !GetAtt MyCustomVPC.Outputs.OutputSubnet
+                  GroupSet:
+                    - !GetAtt MyCustomSecGrp.Outputs.SecGrp
+            UserData:
+                Fn::Base64: |
+                    #!/bin/bash
+                    sudo yum update -y
+                    sudo yum install java-1.8.0-openjdk -y
+                    sudo yum install httpd -y
+                    echo "<h1><center>Cloud Formation Template</center></h1>" > /var/www/html/index.html
+                    systemctl start httpd && systemctl enable httpd
+
+    
+Outputs:
+    AppURL: 
+        Description: URL to access the apache server.
+        Value: !Sub "http://${MyInstance.PublicDnsName}"
