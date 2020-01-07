@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This template is for setting up a tomcat server.
+
+Parameters:
+  MyEC2Key:
+    Description: The following key will be attached to the instance.
+    Type: AWS::EC2::KeyPair::KeyName
+
+
+  MyAvailabilityZone:
+    Description: Select one AZ among the following AZs.
+    Type: String
+    Default: us-east-2a
+    AllowedValues: 
+      - us-east-2a
+      - us-east-2b
+      - us-east-2c
+
+  MyInstanceType:
+    Description: Select type among the following instances.
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+
+Resources:
+#Description: This ec2 will have tomcat installed/running in it.
+  TomcatServer:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: ami-0dacb0c129b49f529
+      InstanceType: !Ref MyInstanceType
+      KeyName: !Ref MyEC2Key
+      AvailabilityZone: !Ref MyAvailabilityZone
+      SecurityGroups: 
+        - !Ref SecGrp
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            sudo yum update -y
+            sudo yum install java-1.8.0-openjdk -y
+            wget http://mirrors.estointernet.in/apache/tomcat/tomcat-8/v8.5.50/bin/apache-tomcat-8.5.50.tar.gz  && tar -xf apache-tomcat-8.5.50.tar.gz
+            mv apache-tomcat-8.5.50 tomcat && mv tomcat /opt/
+            sudo chown -R ec2-user:ec2-user /opt/tomcat
+            sed -i "44i   <role rolename=\"manager-gui\"/>\n<user username=\"tomcat\" password=\"tomcat\" roles=\"manager-gui\"/>" /opt/tomcat/conf/tomcat-users.xml
+            sed -i "19i \<\!--" /opt/tomcat/webapps/host-manager/META-INF/context.xml
+            sed -i "22i -->" /opt/tomcat/webapps/host-manager/META-INF/context.xml
+            sed -i "19i \<\!--" /opt/tomcat/webapps/manager/META-INF/context.xml
+            sed -i "22i -->" /opt/tomcat/webapps/manager/META-INF/context.xml
+            chmod o+x /opt/tomcat/bin/startup.sh
+            /bin/bash /opt/tomcat/bin/startup.sh
+  SecGrp:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: This Security Goup will be attached to the tomcat server.
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          ToPort: '22'
+          FromPort: '22'
+          CidrIp: 0.0.0.0/0
+
+        - IpProtocol: tcp
+          ToPort: '8080'
+          FromPort: '8080'
+          CidrIp: 0.0.0.0/0
