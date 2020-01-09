@@ -30,6 +30,8 @@ Resources:
             sudo yum install jenkins -y
             sudo systemctl start jenkins && sudo systemctl enable jenkins
 
+  #NOTE: Only thing we have to do manually is to capture the first time password from terminal.
+ 
   MySecGrp:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
