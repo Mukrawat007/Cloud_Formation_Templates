@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: This template will set up a jenkins instance.
+
+Parameters:
+  MyKeyName:
+    Description: This key will be attached to the jenkins-server.
+    Type: 'AWS::EC2::KeyPair::KeyName'
+
+Resources:
+  MyEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: ami-02ccb28830b645a41
+      InstanceType: t2.micro
+      AvailabilityZone: us-east-2a
+      KeyName: !Ref MyKeyName
+      SecurityGroups: 
+        - !Ref MySecGrp
+      Tags:
+        - Key: Name
+          Value: Jenkins
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            sudo yum update -y
+            sudo yum install java-1.8.0-openjdk -y
+            sudo wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo
+            sudo rpm --import https://jenkins-ci.org/redhat/jenkins-ci.org.key
+            sudo yum install jenkins -y
+            sudo systemctl start jenkins && sudo systemctl enable jenkins
+
+  MySecGrp:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: This sec grp will be attached to the jenkins-server.
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          ToPort: '22'
+          FromPort: '22'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          ToPort: '8080'
+          FromPort: '8080'
+          CidrIp: 0.0.0.0/0
+Outputs:
+  JenkinsURL:
+    Description: This url is to access jenkins.
+    Value: !Sub http://${MyEC2Instance.PublicDnsName}:8080
